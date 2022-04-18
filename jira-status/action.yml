@@ -1,0 +1,120 @@
+name: Transition Jira issue
+description: Transitions GBL Jira issue to the corresponding status based on PR state
+inputs:
+  jira_url:
+    description: Jira server URL
+    required: true
+  jira_pat:
+    description: Jira Personal Access Token
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Find issue key
+      shell: bash
+      run: |
+        issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.head.ref }}')
+        issue_key=$(tr '[:lower:]' '[:upper:]' <<<"$issue_key")
+        echo "issue_key=$issue_key" >> $GITHUB_ENV
+    - name: Get issue info
+      id: issue
+      uses: blake-r/gha-jira-issue-get@v1
+      with:
+        jira_url: ${{ inputs.jira_url }}
+        jira_pat: ${{ inputs.jira_pat }}
+        issue_key: ${{ env.issue_key }}
+        issue_fields: status
+    - name: Set issue status
+      shell: bash
+      run: |
+        issue_status="$(jq -e -r '.fields.status.name' '${{ steps.issue.outputs.filename }}')"
+        echo "issue_status=$issue_status" >> $GITHUB_ENV
+    - name: Force "In Progress" status
+      id: to_progress
+      if: env.issue_status == 'Backlog' || env.issue_status == 'Escalated'
+      uses: blake-r/gha-jira-issue-transition@v1
+      with:
+        jira_url: ${{ inputs.jira_url }}
+        jira_pat: ${{ inputs.jira_pat }}
+        issue_key: ${{ env.issue_key }}
+        status_name: 'In Progress'
+    - name: Sync issue status
+      shell: bash
+      run: echo 'issue_status=In Progress' >> $GITHUB_ENV
+      if: steps.to_progress.outcome == 'success'
+    - name: Force "Review" status
+      id: to_review
+      if: |
+        env.issue_status == 'In Progress'
+        && (
+          github.event.action == 'review_requested'
+          || (
+            github.event.action == 'submitted'
+            && github.event.review.state == 'approved'
+          )
+          || (
+            github.event.action == 'closed'
+            && github.event.pull_request.merged == true
+          )
+        )
+      uses: blake-r/gha-jira-issue-transition@v1
+      with:
+        jira_url: ${{ inputs.jira_url }}
+        jira_pat: ${{ inputs.jira_pat }}
+        issue_key: ${{ env.issue_key }}
+        status_name: 'review'
+    - name: Sync issue status
+      shell: bash
+      run: echo 'issue_status=review' >> $GITHUB_ENV
+      if: steps.to_review.outcome == 'success'
+    - name: Print information
+      shell: bash
+      run: |
+        echo "Issue key: $issue_key"
+        echo "Issue status: $issue_status"
+        echo 'Event action: ${{ github.event.action }}'
+        echo 'PR merged: ${{ github.event.pull_request.merged }}'
+        echo 'Review state: ${{ github.event.review.state }}'
+    - name: Transition issue back to In Progress
+      id: reject
+      if: |
+        env.issue_status == 'review'
+        && (
+          github.event.action == 'review_request_removed'
+          || (
+            github.event.action == 'submitted'
+            && github.event.review.state == 'changes_requested'
+          )
+          || (
+            github.event.action == 'closed'
+            && github.event.pull_request.merged == false
+          )
+        )
+      uses: blake-r/gha-jira-issue-transition@v1
+      with:
+        jira_url: ${{ inputs.jira_url }}
+        jira_pat: ${{ inputs.jira_pat }}
+        issue_key: ${{ env.issue_key }}
+        status_name: 'In Progress'
+    - name: Sync issue status
+      shell: bash
+      run: echo 'issue_status=In Progress' >> $GITHUB_ENV
+      if: steps.reject.outcome == 'success'
+    - name: Transition issue to Done
+      id: approve
+      if: |
+        env.issue_status == 'review'
+        && (
+          github.event.action == 'closed'
+          && github.event.pull_request.merged == true
+        )
+      uses: blake-r/gha-jira-issue-transition@v1
+      with:
+        jira_url: ${{ inputs.jira_url }}
+        jira_pat: ${{ inputs.jira_pat }}
+        issue_key: ${{ env.issue_key }}
+        status_name: 'Done'
+    - name: Sync issue status
+      shell: bash
+      run: echo 'issue_status=Done' >> $GITHUB_ENV
+      if: steps.approve.outcome == 'success'
