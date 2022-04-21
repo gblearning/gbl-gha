@@ -31,11 +31,12 @@ runs:
         http_code=$(curl -s \
           -w'%{http_code}' \
           -o buildtargets.json \
+          -H'Content-Type: application/json' \
           -H'Authorization: Basic ${{ inputs.api_key }}' \
           '${{ inputs.base_url }}/api/v1/orgs/${{ inputs.org_id }}/projects/${{ inputs.project_id }}/buildtargets'
         )
         if [ "${http_code}" != "200" ]; then
-          cat buildtargets.json
+          echo $(cat buildtargets.json)
           exit 1
         fi
     - name: Filter build targets
@@ -53,12 +54,13 @@ runs:
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
+            -H'Content-Type: application/json' \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
             -X DELETE \
             "${{ inputs.base_url }}$path"
           )
           if [ "${http_code}" != "200" ]; then
-            cat tmpoutput.json
+            echo $(cat tmpoutput.json)
           fi
         done
     - name: Start targets build
@@ -70,11 +72,12 @@ runs:
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
+            -H'Content-Type: application/json' \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
             -X POST \
             "${{ inputs.base_url }}$path"
           )
           if [ "${http_code}" != "200" ]; then
-            cat tmpoutput.json
+            echo $(cat tmpoutput.json)
           fi
         done
