@@ -41,7 +41,7 @@ runs:
     - name: Filter build targets
       shell: bash
       run: |
-        jq -cer '.[] | select(.enabled) | select(.name | test("${{ inputs.regex }}"))' buildtargets.json \
+        jq -ce '[.[] | select(.enabled) | select(.name | test("${{ inputs.regex }}"))]' buildtargets.json \
         > filteredtargets.json
     - name: Cancel targets build
       if: inputs.cancel_first == 'true'
@@ -49,6 +49,7 @@ runs:
       run: |
         jq -cer '.[].links.cancel_builds.href' filteredtargets.json \
         | while read -r path; do
+          echo $path
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
@@ -64,6 +65,7 @@ runs:
       run: |
         jq -cer '.[].links.start_builds.href' filteredtargets.json \
         | while read -r path; do
+          echo $path
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
