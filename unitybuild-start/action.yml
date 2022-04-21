@@ -18,7 +18,7 @@ inputs:
     description: Cancel pending target builds before start another one
     required: false
     default: 'false'
-  filters:
+  regex:
     description: Target name selector filters
     required: false
     default: '.+'
