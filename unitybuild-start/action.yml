@@ -44,7 +44,7 @@ runs:
         jq -cer '.[] | select(.enabled) | select(.name | test("${{ inputs.regex }}"))' buildtargets.json \
         > filteredtargets.json
     - name: Cancel targets build
-      if: inputs.cancel_first == "true"
+      if: inputs.cancel_first == 'true'
       shell: bash
       run: |
         jq -cer '.[].links.cancel_builds.href' filteredtargets.json \
