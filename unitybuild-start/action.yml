@@ -55,7 +55,7 @@ runs:
             -o tmpoutput.json \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
             -X DELETE \
-            '${{ inputs.base_url }}$path'
+            "${{ inputs.base_url }}$path"
           )
           if [ "${http_code}" != "200" ]; then
             cat tmpoutput.json
@@ -72,7 +72,7 @@ runs:
             -o tmpoutput.json \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
             -X POST \
-            '${{ inputs.base_url }}$path'
+            "${{ inputs.base_url }}$path"
           )
           if [ "${http_code}" != "200" ]; then
             cat tmpoutput.json
