@@ -49,12 +49,13 @@ runs:
       run: |
         jq -cer '.[].links.cancel_builds.href' filteredtargets.json \
         | while read -r path; do
-          echo $path
+          echo "DELETE $path"
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
-            -X DELETE '${{ inputs.base_url }}$path'
+            -X DELETE \
+            '${{ inputs.base_url }}$path'
           )
           if [ "${http_code}" != "200" ]; then
             cat tmpoutput.json
@@ -65,12 +66,13 @@ runs:
       run: |
         jq -cer '.[].links.start_builds.href' filteredtargets.json \
         | while read -r path; do
-          echo $path
+          echo "POST $path"
           http_code=$(curl -s \
             -w'%{http_code}' \
             -o tmpoutput.json \
             -H'Authorization: Basic ${{ inputs.api_key }}' \
-            -X POST '${{ inputs.base_url }}$path'
+            -X POST \
+            '${{ inputs.base_url }}$path'
           )
           if [ "${http_code}" != "200" ]; then
             cat tmpoutput.json
