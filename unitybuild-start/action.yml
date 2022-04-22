@@ -1,0 +1,83 @@
+name: Start Unity Cloud Build
+description: Starts Unity Cloud Build jobs based on target pattern
+inputs:
+  base_url:
+    description: Unity Cloud Build base URL
+    required: true
+    default: 'https://build-api.cloud.unity3d.com'
+  api_key:
+    description: Unity Cloud Build API access key
+    required: true
+  org_id:
+    description: Unity Cloud Build organization identifier
+    required: true
+  project_id:
+    description: Unity Cloud Build project identifier
+    required: true
+  cancel_first:
+    description: Cancel pending target builds before start another one
+    required: false
+    default: 'true'
+  regex:
+    description: Target name selector filters
+    required: false
+    default: '.+'
+runs:
+  using: composite
+  steps:
+    - name: Retrieve build target list
+      shell: bash
+      run: |
+        http_code=$(curl -s \
+          -w'%{http_code}' \
+          -o buildtargets.json \
+          -H'Content-Type: application/json' \
+          -H'Authorization: Basic ${{ inputs.api_key }}' \
+          '${{ inputs.base_url }}/api/v1/orgs/${{ inputs.org_id }}/projects/${{ inputs.project_id }}/buildtargets'
+        )
+        if [ "${http_code}" != "200" ]; then
+          echo "${http_code} $(cat buildtargets.json)"
+          exit 1
+        fi
+    - name: Filter build targets
+      shell: bash
+      run: |
+        jq -ce '[.[] | select(.enabled) | select(.name | test("${{ inputs.regex }}"))]' buildtargets.json \
+        > filteredtargets.json
+    - name: Cancel targets build
+      if: inputs.cancel_first == 'true'
+      shell: bash
+      run: |
+        jq -cer '.[].links.cancel_builds.href' filteredtargets.json \
+        | while read -r path; do
+          echo "DELETE $path"
+          http_code=$(curl -s \
+            -w'%{http_code}' \
+            -o tmpoutput.json \
+            -H'Content-Type: application/json' \
+            -H'Authorization: Basic ${{ inputs.api_key }}' \
+            -X DELETE \
+            "${{ inputs.base_url }}$path"
+          )
+          if [ "${http_code}" != "204" ]; then
+            echo "${http_code} $(cat tmpoutput.json)"
+          fi
+        done
+    - name: Start targets build
+      shell: bash
+      run: |
+        jq -cer '.[].links.start_builds.href' filteredtargets.json \
+        | while read -r path; do
+          echo "POST $path"
+          http_code=$(curl -s \
+            -w'%{http_code}' \
+            -o tmpoutput.json \
+            -H'Content-Type: application/json' \
+            -H'Authorization: Basic ${{ inputs.api_key }}' \
+            -X POST \
+            "${{ inputs.base_url }}$path"
+          )
+          if [ "${http_code}" != "202" ]; then
+            echo "${http_code} $(cat tmpoutput.json)"
+          fi
+        done
