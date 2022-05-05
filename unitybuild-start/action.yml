@@ -55,7 +55,7 @@ runs:
       if: inputs.cancel_first == 'true'
       shell: bash
       run: |
-        jq -cer '.[].links.cancel_builds.href' filteredtargets.json \
+        jq -cr '.[].links.cancel_builds.href' filteredtargets.json \
         | while read -r path; do
           echo "DELETE $path"
           http_code=$(curl -s \
@@ -75,7 +75,7 @@ runs:
       run: |
         label_json='"label": "${{ inputs.label }}"'
         commit_json='"commit": "${{ inputs.commit }}"'
-        jq -cer '.[].links.start_builds.href' filteredtargets.json \
+        jq -cr '.[].links.start_builds.href' filteredtargets.json \
         | while read -r path; do
           echo "POST $path"
           http_code=$(curl -s \
