@@ -13,7 +13,12 @@ runs:
     - name: Find issue key
       shell: bash
       run: |
-        issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.head.ref }}')
+        # Looking for key in PR title
+        issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.title }}')
+        if [ -z "$issue_key" ]; then
+          # Compatibility mode, looking for key in PR branch
+          issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.head.ref }}')
+        fi
         issue_key=$(tr '[:lower:]' '[:upper:]' <<<"$issue_key")
         echo "issue_key=$issue_key" >> $GITHUB_ENV
     - name: Get issue info
