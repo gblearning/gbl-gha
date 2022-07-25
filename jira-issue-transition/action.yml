@@ -36,6 +36,7 @@ runs:
   steps:
     - shell: bash
       run: |
+        # Do input values checks
         if [ -z "${{ inputs.transition_name }}" ] && [ -z "${{ inputs.status_name }}" ]; then
           echo "At least one parameter should be specified"
           exit 1
@@ -46,6 +47,7 @@ runs:
         fi
     - shell: bash
       run: |
+        # Get current issue transitions
         http_code=$( \
           curl -s \
             -o'${{ inputs.output_filename }}' \
@@ -55,9 +57,10 @@ runs:
             '${{ inputs.jira_url }}/rest/api/2/issue/${{ inputs.issue_key }}/transitions' \
         )
         if [ "$http_code" != "200" ]; then
-          echo ":error::HTTP $http_code"
+          echo "::error::HTTP $http_code"
           echo "::group::Response"
           cat '${{ inputs.output_filename }}'
+          echo
           echo "::endgroup::"
           exit 1
         fi
@@ -65,21 +68,25 @@ runs:
       shell: bash
       if: ${{ inputs.transition_name }}
       run: |
+        # Find transition id by name
         transition_id=$(jq -r '.transitions[] | select(.name == "${{ inputs.transition_name }}") | .id' ${{ inputs.output_filename }})
         echo "::set-output name=id::$transition_id"
     - id: by_status
       shell: bash
       if: ${{ inputs.status_name }}
       run: |
+        # Find transition id by target status
         transition_id=$(jq -r '.transitions[] | select(.to.name == "${{ inputs.status_name }}") | .id' ${{ inputs.output_filename }})
         echo "::set-output name=id::$transition_id"
     - shell: bash
       run: |
+        # Transition issue status
         transition_id="${{ steps.by_name.outputs.id }}${{ steps.by_status.outputs.id }}"
         if [ -z "$transition_id" ]; then
-          echo ':error::Transition not found'
+          echo "::error::Transition for ${{ inputs.transition_name }}${{ inputs.status_name }} not found"
           echo "::group::Transitions"
           cat '${{ inputs.output_filename }}'
+          echo
           echo "::endgroup::"
           exit 1
         fi
@@ -94,9 +101,10 @@ runs:
             '${{ inputs.jira_url }}/rest/api/2/issue/${{ inputs.issue_key }}/transitions' \
         )
         if [ "$http_code" != "204" ]; then
-          echo ":error::HTTP $http_code"
+          echo "::error::HTTP $http_code"
           echo "::group::Response"
           cat "$output_filename"
+          echo
           echo "::endgroup::"
           exit 1
         fi

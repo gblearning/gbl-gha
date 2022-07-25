@@ -26,6 +26,7 @@ runs:
   steps:
     - shell: bash
       run: |
+        # Get Jira issue json by key
         http_code=$( \
           curl -s \
             -o'${{ inputs.output_filename }}' \

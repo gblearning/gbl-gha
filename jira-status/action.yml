@@ -13,14 +13,13 @@ runs:
     - name: Find issue key
       shell: bash
       run: |
-        # Looking for key in PR title
+        # Get issue key from PR title or branch name
         issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.title }}')
         if [ -z "$issue_key" ]; then
-          # Compatibility mode, looking for key in PR branch
           issue_key=$(grep -o -Ei 'gbl[a-z]*-[0-9]+' <<<'${{ github.event.pull_request.head.ref }}')
         fi
         issue_key=$(tr '[:lower:]' '[:upper:]' <<<"$issue_key")
-        echo "issue_key=$issue_key" >> $GITHUB_ENV
+        echo "issue_key=$issue_key" | tee -a $GITHUB_ENV
     - name: Get issue info
       id: issue
       uses: gblearning/gbl-gha/jira-issue-get@gbl-392-migrate-from-blake-r
@@ -32,8 +31,9 @@ runs:
     - name: Set issue status
       shell: bash
       run: |
+        # Get issue current status
         issue_status="$(jq -e -r '.fields.status.name' '${{ steps.issue.outputs.filename }}')"
-        echo "issue_status=$issue_status" >> $GITHUB_ENV
+        echo "issue_status=$issue_status" | tee -a $GITHUB_ENV
     - name: Force "In Progress" status
       id: to_progress
       if: env.issue_status == 'Backlog' || env.issue_status == 'Escalated'
@@ -45,7 +45,7 @@ runs:
         status_name: 'In Progress'
     - name: Sync issue status
       shell: bash
-      run: echo 'issue_status=In Progress' >> $GITHUB_ENV
+      run: echo 'issue_status=In Progress' | tee -a $GITHUB_ENV
       if: steps.to_progress.outcome == 'success'
     - name: Force "Review" status
       id: to_review
@@ -70,7 +70,7 @@ runs:
         status_name: 'review'
     - name: Sync issue status
       shell: bash
-      run: echo 'issue_status=review' >> $GITHUB_ENV
+      run: echo 'issue_status=review' | tee -a $GITHUB_ENV
       if: steps.to_review.outcome == 'success'
     - name: Print information
       shell: bash
@@ -103,7 +103,7 @@ runs:
         status_name: 'In Progress'
     - name: Sync issue status
       shell: bash
-      run: echo 'issue_status=In Progress' >> $GITHUB_ENV
+      run: echo 'issue_status=In Progress' | tee -a $GITHUB_ENV
       if: steps.reject.outcome == 'success'
     - name: Transition issue to Done
       id: approve
@@ -121,5 +121,5 @@ runs:
         status_name: 'Done'
     - name: Sync issue status
       shell: bash
-      run: echo 'issue_status=Done' >> $GITHUB_ENV
+      run: echo 'issue_status=Done' | tee -a $GITHUB_ENV
       if: steps.approve.outcome == 'success'

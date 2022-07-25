@@ -11,6 +11,10 @@ on:
     types:
       - submitted
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   transition-issue:
     if: github.event.pull_request.draft == false
