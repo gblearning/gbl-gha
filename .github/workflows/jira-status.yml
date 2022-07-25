@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Transition issue
-        uses: gblearning/gbl-gha/jira-status@${{ github.action_ref }}
+        uses: gblearning/gbl-gha/jira-status@${{ env.GITHUB_REF_NAME }}
         with:
           jira_url: ${{ secrets.JIRA_BASE_URL }}
           jira_pat: ${{ secrets.JIRA_PAT_TOKEN }}
