@@ -1,0 +1,24 @@
+name: Manage Jira issue status
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - closed
+      - review_requested
+      - review_request_removed
+  pull_request_review:
+    types:
+      - submitted
+
+jobs:
+  transition-issue:
+    if: github.event.pull_request.draft == false
+    name: Transition issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Transition issue
+        uses: gblearning/gbl-gha/jira-status@{{ github.action_ref }}
+        with:
+          jira_url: ${{ secrets.JIRA_BASE_URL }}
+          jira_pat: ${{ secrets.JIRA_PAT_TOKEN }}

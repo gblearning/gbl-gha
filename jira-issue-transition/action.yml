@@ -1,0 +1,102 @@
+name: 'Retrieve Jira Server Issue'
+description: 'Download Jira Server issue in the JSON format.'
+inputs:
+  jira_url:
+    description: 'Jira Server base URL'
+    required: true
+  jira_pat:
+    description: 'Jira Personal Access Token'
+    required: true
+  issue_key:
+    description: 'Issue key'
+    required: true
+  transition_name:
+    description: 'Transition name to execute'
+    required: false
+  status_name:
+    description: 'Status name to reach'
+    required: false
+  update_json:
+    description: 'Transition screen fields JSON string'
+    required: true
+    default: '{}'
+  output_filename:
+    description: 'Filename where transitions data will be stored'
+    required: true
+    default: 'transitions.json'
+outputs:
+  filename:
+    description: 'Filename where transitions JSON stored'
+    value: '${{ inputs.output_filename }}'
+  status:
+    description: 'Final issue status name'
+    value: '${{ steps.status.outputs.name }}'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        if [ -z "${{ inputs.transition_name }}" ] && [ -z "${{ inputs.status_name }}" ]; then
+          echo "At least one parameter should be specified"
+          exit 1
+        fi
+        if [ -n "${{ inputs.transition_name }}" ] && [ -n "${{ inputs.status_name }}" ]; then
+          echo "Only one parameter should be specified"
+          exit 1
+        fi
+    - shell: bash
+      run: |
+        http_code=$( \
+          curl -s \
+            -o'${{ inputs.output_filename }}' \
+            -w'%{http_code}' \
+            -H'Authorization: Bearer ${{ inputs.jira_pat }}' \
+            -H'Content-Type: application/json' \
+            '${{ inputs.jira_url }}/rest/api/2/issue/${{ inputs.issue_key }}/transitions' \
+        )
+        if [ "$http_code" != "200" ]; then
+          echo ":error::HTTP $http_code"
+          echo "::group::Response"
+          cat '${{ inputs.output_filename }}'
+          echo "::endgroup::"
+          exit 1
+        fi
+    - id: by_name
+      shell: bash
+      if: ${{ inputs.transition_name }}
+      run: |
+        transition_id=$(jq -r '.transitions[] | select(.name == "${{ inputs.transition_name }}") | .id' ${{ inputs.output_filename }})
+        echo "::set-output name=id::$transition_id"
+    - id: by_status
+      shell: bash
+      if: ${{ inputs.status_name }}
+      run: |
+        transition_id=$(jq -r '.transitions[] | select(.to.name == "${{ inputs.status_name }}") | .id' ${{ inputs.output_filename }})
+        echo "::set-output name=id::$transition_id"
+    - shell: bash
+      run: |
+        transition_id="${{ steps.by_name.outputs.id }}${{ steps.by_status.outputs.id }}"
+        if [ -z "$transition_id" ]; then
+          echo ':error::Transition not found'
+          echo "::group::Transitions"
+          cat '${{ inputs.output_filename }}'
+          echo "::endgroup::"
+          exit 1
+        fi
+        output_filename="${{ runner.temp }}/$$.txt"
+        http_code=$( \
+          curl -s \
+            -o"$output_filename" \
+            -w'%{http_code}' \
+            -H'Authorization: Bearer ${{ inputs.jira_pat }}' \
+            -H'Content-Type: application/json' \
+            -d'{"transition": {"id": '$transition_id'}, "update": ${{ inputs.update_json }}}' \
+            '${{ inputs.jira_url }}/rest/api/2/issue/${{ inputs.issue_key }}/transitions' \
+        )
+        if [ "$http_code" != "204" ]; then
+          echo ":error::HTTP $http_code"
+          echo "::group::Response"
+          cat "$output_filename"
+          echo "::endgroup::"
+          exit 1
+        fi

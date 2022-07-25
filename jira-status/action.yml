@@ -18,7 +18,7 @@ runs:
         echo "issue_key=$issue_key" >> $GITHUB_ENV
     - name: Get issue info
       id: issue
-      uses: blake-r/gha-jira-issue-get@v1
+      uses: gblearning/gbl-gha/jira-issue-get@{{ github.action_ref }}
       with:
         jira_url: ${{ inputs.jira_url }}
         jira_pat: ${{ inputs.jira_pat }}
@@ -32,7 +32,7 @@ runs:
     - name: Force "In Progress" status
       id: to_progress
       if: env.issue_status == 'Backlog' || env.issue_status == 'Escalated'
-      uses: blake-r/gha-jira-issue-transition@v1
+      uses: gblearning/gbl-gha/jira-issue-transition@{{ github.action_ref }}
       with:
         jira_url: ${{ inputs.jira_url }}
         jira_pat: ${{ inputs.jira_pat }}
@@ -57,7 +57,7 @@ runs:
             && github.event.pull_request.merged == true
           )
         )
-      uses: blake-r/gha-jira-issue-transition@v1
+      uses: gblearning/gbl-gha/jira-issue-transition@{{ github.action_ref }}
       with:
         jira_url: ${{ inputs.jira_url }}
         jira_pat: ${{ inputs.jira_pat }}
@@ -90,7 +90,7 @@ runs:
             && github.event.pull_request.merged == false
           )
         )
-      uses: blake-r/gha-jira-issue-transition@v1
+      uses: gblearning/gbl-gha/jira-issue-transition@{{ github.action_ref }}
       with:
         jira_url: ${{ inputs.jira_url }}
         jira_pat: ${{ inputs.jira_pat }}
@@ -108,7 +108,7 @@ runs:
           github.event.action == 'closed'
           && github.event.pull_request.merged == true
         )
-      uses: blake-r/gha-jira-issue-transition@v1
+      uses: gblearning/gbl-gha/jira-issue-transition@{{ github.action_ref }}
       with:
         jira_url: ${{ inputs.jira_url }}
         jira_pat: ${{ inputs.jira_pat }}
